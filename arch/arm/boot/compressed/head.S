@@ -437,7 +437,6 @@ wont_overwrite:
 		orrs	r1, r0, r5
 		beq	not_relocated
 
-@ [lksq:20150620] r0는 재배치된 offset 값, r5는 dtb사이즈인데 현재 0으로 셋팅 되어 있음
 @ [lksq:20150620] r11(_got_start), r12(_got_end)에 대해서 재배치오프셋 만큼 옮겨 준다
 		add	r11, r11, r0
 		add	r12, r12, r0

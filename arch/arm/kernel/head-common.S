@@ -87,6 +87,7 @@ __mmap_switched:
 	ldrne	fp, [r4], #4
 	strne	fp, [r5], #4
 	bne	1b
+	/* [lksq:20150627] _data만 쓰는건데 이게 무슨 의미인가? */
 
 	mov	fp, #0				@ Clear BSS (and zero fp)
 1:	cmp	r6, r7
@@ -151,7 +152,10 @@ ENDPROC(lookup_processor_type)
  */
 __lookup_processor_type:
 	adr	r3, __lookup_processor_type_data
+/* [lksq:20150627] processor type은 __v7_ca7mp_proc_info임.(~/arch/arm/mm/proc-v7.S참고) */
+
 	ldmia	r3, {r4 - r6}
+	/* [lksq:20150627] r4(__lookup_processor_type_data의 가상주소), r5(__proc_info_begin), r6(__proc_info_end) */
 	sub	r3, r3, r4			@ get offset between virt&phys
 	add	r5, r5, r3			@ convert virt addresses to
 	add	r6, r6, r3			@ physical address space
