@@ -496,8 +496,14 @@ void __init smp_setup_processor_id(void)
 {
 	int i;
 	u32 mpidr = is_smp() ? read_cpuid_mpidr() & MPIDR_HWID_BITMASK : 0;
+	
+	/*[lksq:20150704]:affinity level 0 : multi core 환경상에서의 affinity setting.
+	 				  affinity level 1 : big/little core 환경에서의 affinity setting.
+	 				  affinity level 2 : 몰까요??????? */
 	u32 cpu = MPIDR_AFFINITY_LEVEL(mpidr, 0);
 
+	 	 
+	/* [lksq:20150704]:boot cpu setting을 위한 code임 */
 	cpu_logical_map(0) = cpu;
 	for (i = 1; i < nr_cpu_ids; ++i)
 		cpu_logical_map(i) = i == cpu ? 0 : i;

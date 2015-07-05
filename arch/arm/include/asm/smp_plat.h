@@ -19,6 +19,10 @@ static inline bool is_smp(void)
 #ifndef CONFIG_SMP
 	return false;
 #elif defined(CONFIG_SMP_ON_UP)
+	/*[lksq:20150704]SMP kernels contain instructions which fail on non-SMP processors.
+	  Enabling this option allows the kernel to modify itself to make
+	  these instructions safe.  Disabling it allows about 1K of space
+	  saving. */
 	extern unsigned int smp_on_up;
 	return !!smp_on_up;
 #else

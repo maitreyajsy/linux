@@ -24,6 +24,7 @@
 static inline void set_my_cpu_offset(unsigned long off)
 {
 	/* Set TPIDRPRW */
+	/* [lksq:20150704]:TODO Thread and Process ID Register의 의미가 무엇인지 파악해보기*/
 	asm volatile("mcr p15, 0, %0, c13, c0, 4" : : "r" (off) : "memory");
 }
 
