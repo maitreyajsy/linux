@@ -509,12 +509,12 @@ asmlinkage __visible void __init start_kernel(void)
 	lockdep_init();
 	set_task_stack_end_magic(&init_task);
 	smp_setup_processor_id();
-	debug_objects_early_init();
+	debug_objects_early_init(); /* [lksq:20150711] spin_lock init & for debug feature , debug용 object pool list 연결 생성, rasp에서는 config상 정의가 안되어있으므로 빈함수  */
 
 	/*
 	 * Set up the the initial canary ASAP:
 	 */
-	boot_init_stack_canary();
+	boot_init_stack_canary(); /* [lksq:20150711] random byte 생성하여 stack guard 와 init task structure 의 stack canary 값을 초기화, rasp에서는 CONFIG_CC_STACKPROTECTOR 미정의로 빈함수  */
 
 	cgroup_init_early();
 
