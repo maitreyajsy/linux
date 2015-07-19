@@ -310,6 +310,13 @@ static void __init cacheid_init(void)
 {
 	unsigned int arch = cpu_architecture();
 
+	/*
+	   [lksq:20150718]
+			PIPT : physical to physical
+			VIPT : virtual to physicall
+			ASID : adress space id
+	*/
+
 	if (arch == CPU_ARCH_ARMv7M) {
 		cacheid = 0;
 	} else if (arch >= CPU_ARCH_ARMv6) {
@@ -396,6 +403,7 @@ static void __init cpuid_init_hwcaps(void)
 
 static void __init elf_hwcap_fixup(void)
 {
+	//[lksq:20150718]id=0x410fc070
 	unsigned id = read_cpuid_id();
 	unsigned sync_prim;
 
@@ -599,6 +607,26 @@ static void __init setup_processor(void)
 		       read_cpuid_id());
 		while (1);
 	}
+/*
+  [lksq:20150718]:w
+ .macro __v7_proc initfunc, mm_mmuflags = 0, io_mmuflags = 0, hwcaps = 0, proc_fns = v7_processor_functions
+	ALT_SMP(.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | PMD_SECT_AP_READ | \
+			PMD_SECT_AF | PMD_FLAGS_SMP | \mm_mmuflags)
+	ALT_UP(.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | PMD_SECT_AP_READ | \
+			PMD_SECT_AF | PMD_FLAGS_UP | \mm_mmuflags)
+	.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | \
+		PMD_SECT_AP_READ | PMD_SECT_AF | \io_mmuflags
+	W(b)	\initfunc
+	.long	cpu_arch_name       "armv7"
+	.long	cpu_elf_name
+	.long	HWCAP_SWP | HWCAP_HALF | HWCAP_THUMB | HWCAP_FAST_MULT | \
+		HWCAP_EDSP | HWCAP_TLS | \hwcaps
+	.long	cpu_v7_name 
+	.long	\proc_fns
+	.long	v7wbi_tlb_fns
+	.long	v6_user_fns
+	.long	v7_cache_fns
+*/
 
 	cpu_name = list->cpu_name;
 	__cpu_architecture = __get_cpu_architecture();
@@ -610,9 +638,11 @@ static void __init setup_processor(void)
 	cpu_tlb = *list->tlb;
 #endif
 #ifdef MULTI_USER
+	/*[lksq:20150718]arch/arm/mm/copypage-v6.c에서 v6_user_fns로 검색. */
 	cpu_user = *list->user;
 #endif
 #ifdef MULTI_CACHE
+	/*[lksq:20150718]arch/arm/mm/cache-v7.S에 있음.(v7_flush_*) */
 	cpu_cache = *list->cache;
 #endif
 
@@ -632,6 +662,11 @@ static void __init setup_processor(void)
 	elf_hwcap &= ~(HWCAP_THUMB | HWCAP_IDIVT);
 #endif
 #ifdef CONFIG_MMU
+/*
+   [lksq:20150718]
+   cpu_mm_mmu_flags 값 : ALT_SMP(.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | PMD_SECT_AP_READ | \
+					PMD_SECT_AF | PMD_FLAGS_SMP | \mm_mmuflags)
+*/
 	init_default_cache_policy(list->__cpu_mm_mmu_flags);
 #endif
 	erratum_a15_798181_init();
