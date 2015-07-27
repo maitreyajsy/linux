@@ -469,6 +469,9 @@ void notrace cpu_init(void)
 	/*
 	 * setup stacks for re-entrant exception handlers
 	 */
+   /* [lksq:20150725] 아래 코드는 각 모드별 sp에 본 파일의 static 전역변수 stacks의 주소로부터의
+	  offset만큼 각 모드별 stack변수 위치를 더해서 이주소를 각 모드 sp 에 mov 시키는 코드이다
+   */
 	__asm__ (
 	"msr	cpsr_c, %1\n\t"
 	"add	r14, %0, %2\n\t"

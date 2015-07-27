@@ -578,6 +578,7 @@ int __init of_scan_flat_dt(int (*it)(unsigned long node,
 				     void *data),
 			   void *data)
 {
+	/* [lksq:20150725] initial_boot_params = 가상주소(physical address of dtb blob) */
 	const void *blob = initial_boot_params;
 	const char *pathp;
 	int offset, rc = 0, depth = -1;
