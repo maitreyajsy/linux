@@ -173,7 +173,7 @@ not_angel:
 		and	r4, r4, #0xf8000000
 		add	r4, r4, #TEXT_OFFSET
 #else
-		ldr	r4, =zreladdr
+		ldr	r4, =zreladdr  @ [lksq:20150613] bcm2709 makefile.boot 참고 -> 0x8000
 #endif
 
 		/*
@@ -182,32 +182,36 @@ not_angel:
 		 * Given that r4 > &_end is most unfrequent, we add a rough
 		 * additional 1MB of room for a possible appended DTB.
 		 */
+@ [lksq:20150620]r4 = 0x8000 ,pc= 0x80AC
 		mov	r0, pc
 		cmp	r0, r4
 		ldrcc	r0, LC0+32
 		addcc	r0, r0, pc
 		cmpcc	r4, r0
-		orrcc	r4, r4, #1		@ remember we skipped cache_on
+@ [lksq:20150620] 결국 r0값이 더 크므로 cache_on이 실행됨
+		orrcc	r4, r4, #1		@ remember we skipped cache_on  [lksq:20150613] 잘모르겠음 : TODO -> 2874865c commit 참고
 		blcs	cache_on
 
 restart:	adr	r0, LC0
 		ldmia	r0, {r1, r2, r3, r6, r10, r11, r12}
-		ldr	sp, [r0, #28]
+		ldr	sp, [r0, #28] @ [lksq:20150613] stack size 4096
 
 		/*
 		 * We might be running at a different address.  We need
 		 * to fix up various pointers.
 		 */
 		sub	r0, r0, r1		@ calculate the delta offset
-		add	r6, r6, r0		@ _edata
-		add	r10, r10, r0		@ inflated kernel size location
+@ [lksq:20150613] TODO : offset 0 이 아닌 경우가 언제인지??
 
+		add	r6, r6, r0		@ _edata
+		add	r10, r10, r0		@ inflated kernel size location @ [lksq:20150613] piggy.gzip의 address -> incbin
+@ [lksq:20150620] TODO : offset 0 이 아닌 경우가 언제인지?? -> 답변 : 재배치가 되면 각 섹션별로 재배치된 곳의 위치를 알아야 됨 ,이때 옮겨진 LC0 와 원래 있던 LC0 차이만큼 offset을 구하고 이를 기반으로 나머지 section들도 위치 조정함
 		/*
 		 * The kernel build system appends the size of the
 		 * decompressed kernel at the end of the compressed data
 		 * in little-endian form.
 		 */
-		ldrb	r9, [r10, #0]
+		ldrb	r9, [r10, #0] @ [lksq:20150613] Determine uncompressed size of GZIP file -> gzip의 last 4byte
 		ldrb	lr, [r10, #1]
 		orr	r9, r9, lr, lsl #8
 		ldrb	lr, [r10, #2]
@@ -218,7 +222,7 @@ restart:	adr	r0, LC0
 #ifndef CONFIG_ZBOOT_ROM
 		/* malloc space is above the relocated stack (64k max) */
 		add	sp, sp, r0
-		add	r10, sp, #0x10000
+		add	r10, sp, #0x10000  @ [lksq:20150613] heap으로 사용될 영역 지정 stack뒤 64K 로 러프하게 설정함
 #else
 		/*
 		 * With ZBOOT_ROM the bss/stack is non relocatable,
@@ -341,8 +345,11 @@ dtb_check_done:
 		cmp	r4, r10
 		bhs	wont_overwrite
 		add	r10, r4, r9
+@ [lksq:20150620] r10 = 0x8000 + r9=커널 원본사이즈(piggy.gz)
 		adr	r9, wont_overwrite
+@ [lksq:20150620] adr은 의사명령어이므로, compile타임때 다음과 같이 변환 된다 -> add	r0, pc, #112; 이는 상대주소값으로 특정 label을 찾을때 사용된다. 매우 중요!!!
 		cmp	r10, r9
+@ [lksq:20150620] 두번째 restart 호출시, wont_overwrite 라벨은 결국 r10 뒤에 위치 하므로 드디어 입성
 		bls	wont_overwrite
 
 /*
@@ -378,11 +385,18 @@ dtb_check_done:
 1:
 #endif
 
+@ [lksq:20150613] end...........
+
 		sub	r9, r6, r5		@ size to copy
+@ [lksq:20150620] edata - restart , 그러므로 r9에는 복사된 이미지의 크기가 들어간다 복사 대상으로는 text영역의 restart 부터 edata까지이며, 이는 text , rodata, pigggy , got를 포함 하는 크기이다.
 		add	r9, r9, #31		@ rounded up to a multiple
 		bic	r9, r9, #31		@ ... of 32 bytes
 		add	r6, r9, r5
+@ [lksq:20150620] r6 is source ,r5(restart 라벨) + 복사할 사이즈 ,이는 결국 edata를 가리킨다
 		add	r9, r9, r10
+@ [lksq:20150620] r10 = 0x8000 + 원본사이즈 + text size(reloc_code_end - restart)
+@ [lksq:20150620] r9 is dest , r10 + 복사할 사이즈
+
 
 1:		ldmdb	r6!, {r0 - r3, r10 - r12, lr}
 		cmp	r6, r5
@@ -391,6 +405,7 @@ dtb_check_done:
 
 		/* Preserve offset to relocated code. */
 		sub	r6, r9, r6
+@ [lksq:20150620] r9 =- r6, 이동
 
 #ifndef CONFIG_ZBOOT_ROM
 		/* cache_clean_flush may use the stack, so relocate it */
@@ -401,6 +416,7 @@ dtb_check_done:
 
 		adr	r0, BSYM(restart)
 		add	r0, r0, r6
+@ [lksq:20150620] r6 복사된 offset를 구하고 , 복사된 영역의 restart로 jump
 		mov	pc, r0
 
 wont_overwrite:
@@ -417,9 +433,11 @@ wont_overwrite:
  *   r12 = GOT end
  *   sp  = stack pointer
  */
+@ [lksq:20150620] r0는 재배치된 offset 값, r5는 dtb사이즈인데 현재 0으로 셋팅 되어 있음
 		orrs	r1, r0, r5
 		beq	not_relocated
 
+@ [lksq:20150620] r11(_got_start), r12(_got_end)에 대해서 재배치오프셋 만큼 옮겨 준다
 		add	r11, r11, r0
 		add	r12, r12, r0
 
@@ -432,12 +450,16 @@ wont_overwrite:
 		add	r2, r2, r0
 		add	r3, r3, r0
 
+@ [lksq:20150620] r2(__bss_start), r3(_end)에 대해서 재배치오프셋 만큼 옮겨 준다
 		/*
 		 * Relocate all entries in the GOT table.
 		 * Bump bss entries to _edata + dtb size
 		 */
+
+@ [lksq:20150620]  got 테이블 안에 있는 주소값도 마찬가지로 재배치 offset만큼 옮겨준다.
 1:		ldr	r1, [r11, #0]		@ relocate entries in the GOT
 		add	r1, r1, r0		@ This fixes up C references
+@ [lksq:20150620]  got 테이블 안에 있는 값중에서 bss section안에 있는 놈이면 , 재배치 오프셋 뿐만 아니라 DTB사이즈도 추가로 더해 준다.그러나 우리 옵션으로는 dtb사이즈는 0임
 		cmp	r1, r2			@ if entry >= bss_start &&
 		cmphs	r3, r1			@       bss_end > entry
 		addhi	r1, r1, r5		@    entry += dtb size
@@ -448,7 +470,7 @@ wont_overwrite:
 		/* bump our bss pointers too */
 		add	r2, r2, r5
 		add	r3, r3, r5
-
+@ [lksq:20150620]  bss_start/end는 이미 갱신되었고 , dtb사이즈에 대해서도 갱신 해준다.
 #else
 
 		/*
@@ -479,7 +501,8 @@ not_relocated:	mov	r0, #0
 		 */
 		tst	r4, #1
 		bic	r4, r4, #1
-		blne	cache_on
+		blne	cache_on @ [lksq:20150620] ne는 z 플래그가 0일때조건임
+@ [lksq:20150620] r4에 1에 셋팅되어 있는 경우 ,Zero플래그가 clear됨 , 우리의 경우 1이 없으므로, 제로플래그가 셋팅됨 ,그렇게 되면 ne 조건에 안 맞아서 cache_on 을 안탐.
 
 /*
  * The C runtime environment should now be setup sufficiently.
@@ -632,26 +655,38 @@ __armv3_mpu_cache_on:
 __setup_mmu:	sub	r3, r4, #16384		@ Page directory size
 		bic	r3, r3, #0xff		@ Align the pointer
 		bic	r3, r3, #0x3f00
+@ [lksq:20150620]r4 = 0x8000 ,r3 = 0x8000 - 0x4000
 /*
  * Initialise the page tables, turning on the cacheable and bufferable
  * bits for the RAM area only.
  */
+
+@ [lksq:20150620] To get rid of 18 bits
 		mov	r0, r3
 		mov	r9, r0, lsr #18
 		mov	r9, r9, lsl #18		@ start of RAM
 		add	r10, r9, #0x10000000	@ a reasonable RAM size
+@ [lksq:20150620] r10 = 0x0 + 256MB
 		mov	r1, #0x12		@ XN|U + section mapping
 		orr	r1, r1, #3 << 10	@ AP=11
 		add	r2, r3, #16384
+@ [lksq:20150620] r2 =0x8000 = 0x4000 + 16384
+@ [lksq:20150620] if( r1 > start && r1 < 256MB )
 1:		cmp	r1, r9			@ if virt > start of RAM
 		cmphs	r10, r1			@   && end of RAM > virt
 		bic	r1, r1, #0x1c		@ clear XN|U + C + B
+@ [lksq:20150620] if r1 > 256MB
 		orrlo	r1, r1, #0x10		@ Set XN|U for non-RAM
+@ [lksq:20150620] r6, #CB_BITS | 0x12	@ U
+@ [lksq:20150620] if r1 < 256MB
 		orrhs	r1, r1, r6		@ set RAM section settings
 		str	r1, [r0], #4		@ 1:1 mapping
+@ [lksq:20150620] r0= 0x4000 += 4;
 		add	r1, r1, #1048576
+@ [lksq:20150620] r1 += 1MB
 		teq	r0, r2
 		bne	1b
+
 /*
  * If ever we are running from Flash, then we surely want the cache
  * to be enabled also for our execution instance...  We map 2MB of it
@@ -660,12 +695,18 @@ __setup_mmu:	sub	r3, r4, #16384		@ Page directory size
  */
 		orr	r1, r6, #0x04		@ ensure B is set for this
 		orr	r1, r1, #3 << 10
+
+@ [lksq:20150620] r1  = #CB_BITS | 0x12 | 0x04 | 3 << 10
 		mov	r2, pc
 		mov	r2, r2, lsr #20
 		orr	r1, r1, r2, lsl #20
+@ [lksq:20150620] r1  = current PC | #CB_BITS | 0x12 | 0x04 | 3 << 10
 		add	r0, r3, r2, lsl #2
+@ [lksq:20150620] r0 is used for index, lsl #2(x4) ,페이지테이블에서 PC주소에 해당하는 PTE를 찾음, lsr 20을 PTE의 attribute를 날리고 앞에 12비트의 주소만 가져온다. 이 주소를 통해서 테이블에 접근을 하는데, 테이블이 4바이트 단위이므로 곱하기 4(lsl #2)를 해준다.
 		str	r1, [r0], #4
+@ [lksq:20150620] r0 = page table(r3)+index ,page_table[index++] = r1
 		add	r1, r1, #1048576
+@ [lksq:20150620] PC값이 증가해서 다음 PTE를 사용 할 수 있으므로 다음 PTE에 대해서도 똑같은 속성값으로 부여한다.
 		str	r1, [r0]
 		mov	pc, lr
 ENDPROC(__setup_mmu)
@@ -849,7 +890,7 @@ proc_types:
 		W(b)	__armv3_mpu_cache_on
 		W(b)	__armv3_mpu_cache_off
 		W(b)	__armv3_mpu_cache_flush
-		
+
 		.word	0x41009400		@ ARM94x
 		.word	0xff00ff00
 		W(b)	__armv4_mpu_cache_on
@@ -1063,7 +1104,7 @@ __armv4_mpu_cache_flush:
 		mcrne	p15, 0, ip, c7, c5, 0	@ invalidate I cache
 		mcr	p15, 0, ip, c7, c10, 4	@ drain WB
 		mov	pc, lr
-		
+
 __fa526_cache_flush:
 		tst	r4, #1
 		movne	pc, lr

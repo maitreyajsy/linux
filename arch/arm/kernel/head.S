@@ -139,6 +139,7 @@ ENTRY(stext)
 	adr	lr, BSYM(1f)			@ return (PIC) address
 	mov	r8, r4				@ set TTBR1 to swapper_pg_dir
  ARM(	add	pc, r10, #PROCINFO_INITFUNC	)
+	/* [lksq:20150627] arch/arm/mm/proc-v7.S __v7_ca7mp_setup로 가서 __v7_setup 수행 */
  THUMB(	add	r12, r10, #PROCINFO_INITFUNC	)
  THUMB(	ret	r12				)
 1:	b	__enable_mmu
@@ -162,13 +163,16 @@ ENDPROC(stext)
  */
 __create_page_tables:
 	pgtbl	r4, r8				@ page table address
+	/* [lksq:20150627] : r4 ->(물리주소offset + TEXT_OFFSET) - PG_DIR_SIZE */
 
 	/*
 	 * Clear the swapper page table
 	 */
+
 	mov	r0, r4
 	mov	r3, #0
 	add	r6, r0, #PG_DIR_SIZE
+	/* [lksq:20150627] : r4(0x4000) r6(0x8000) */
 1:	str	r3, [r0], #4
 	str	r3, [r0], #4
 	str	r3, [r0], #4
@@ -205,6 +209,7 @@ __create_page_tables:
 #endif
 
 	ldr	r7, [r10, #PROCINFO_MM_MMUFLAGS] @ mm_mmuflags
+	/* [lksq:20150627] arch/arm/mm/proc-v7.S __v7_ca7mp_proc_info에서 __v7_proc 매크로를 이용해서 mmu section page entry의 flag값을 설정함 */
 
 	/*
 	 * Create identity mapping to cater for __enable_mmu.
@@ -217,6 +222,7 @@ __create_page_tables:
 	add	r6, r6, r0			@ phys __turn_mmu_on_end
 	mov	r5, r5, lsr #SECTION_SHIFT
 	mov	r6, r6, lsr #SECTION_SHIFT
+	/* [lksq:20150627] 상위 12비트만 남겨둠 */
 
 1:	orr	r3, r7, r5, lsl #SECTION_SHIFT	@ flags + kernel base
 	str	r3, [r4, r5, lsl #PMD_ORDER]	@ identity mapping
@@ -228,6 +234,7 @@ __create_page_tables:
 	 * Map our RAM from the start to the end of the kernel .bss section.
 	 */
 	add	r0, r4, #PAGE_OFFSET >> (SECTION_SHIFT - PMD_ORDER)
+	/* [lksq:20150627] 0x80000000 >> 18 = 0x2000, 0x80000000에 대한 페이지 테이블 주소 */
 	ldr	r6, =(_end - 1)
 	orr	r3, r8, r7
 	add	r6, r4, r6, lsr #(SECTION_SHIFT - PMD_ORDER)

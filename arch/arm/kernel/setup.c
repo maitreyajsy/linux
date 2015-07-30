@@ -310,6 +310,13 @@ static void __init cacheid_init(void)
 {
 	unsigned int arch = cpu_architecture();
 
+	/*
+	   [lksq:20150718]
+			PIPT : physical to physical
+			VIPT : virtual to physicall
+			ASID : adress space id
+	*/
+
 	if (arch == CPU_ARCH_ARMv7M) {
 		cacheid = 0;
 	} else if (arch >= CPU_ARCH_ARMv6) {
@@ -396,6 +403,7 @@ static void __init cpuid_init_hwcaps(void)
 
 static void __init elf_hwcap_fixup(void)
 {
+	//[lksq:20150718]id=0x410fc070
 	unsigned id = read_cpuid_id();
 	unsigned sync_prim;
 
@@ -461,6 +469,9 @@ void notrace cpu_init(void)
 	/*
 	 * setup stacks for re-entrant exception handlers
 	 */
+   /* [lksq:20150725] 아래 코드는 각 모드별 sp에 본 파일의 static 전역변수 stacks의 주소로부터의
+	  offset만큼 각 모드별 stack변수 위치를 더해서 이주소를 각 모드 sp 에 mov 시키는 코드이다
+   */
 	__asm__ (
 	"msr	cpsr_c, %1\n\t"
 	"add	r14, %0, %2\n\t"
@@ -496,8 +507,14 @@ void __init smp_setup_processor_id(void)
 {
 	int i;
 	u32 mpidr = is_smp() ? read_cpuid_mpidr() & MPIDR_HWID_BITMASK : 0;
+	
+	/*[lksq:20150704]:affinity level 0 : multi core 환경상에서의 affinity setting.
+	 				  affinity level 1 : big/little core 환경에서의 affinity setting.
+	 				  affinity level 2 : 몰까요??????? */
 	u32 cpu = MPIDR_AFFINITY_LEVEL(mpidr, 0);
 
+	 	 
+	/* [lksq:20150704]:boot cpu setting을 위한 code임 */
 	cpu_logical_map(0) = cpu;
 	for (i = 1; i < nr_cpu_ids; ++i)
 		cpu_logical_map(i) = i == cpu ? 0 : i;
@@ -593,6 +610,26 @@ static void __init setup_processor(void)
 		       read_cpuid_id());
 		while (1);
 	}
+/*
+  [lksq:20150718]:w
+ .macro __v7_proc initfunc, mm_mmuflags = 0, io_mmuflags = 0, hwcaps = 0, proc_fns = v7_processor_functions
+	ALT_SMP(.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | PMD_SECT_AP_READ | \
+			PMD_SECT_AF | PMD_FLAGS_SMP | \mm_mmuflags)
+	ALT_UP(.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | PMD_SECT_AP_READ | \
+			PMD_SECT_AF | PMD_FLAGS_UP | \mm_mmuflags)
+	.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | \
+		PMD_SECT_AP_READ | PMD_SECT_AF | \io_mmuflags
+	W(b)	\initfunc
+	.long	cpu_arch_name       "armv7"
+	.long	cpu_elf_name
+	.long	HWCAP_SWP | HWCAP_HALF | HWCAP_THUMB | HWCAP_FAST_MULT | \
+		HWCAP_EDSP | HWCAP_TLS | \hwcaps
+	.long	cpu_v7_name 
+	.long	\proc_fns
+	.long	v7wbi_tlb_fns
+	.long	v6_user_fns
+	.long	v7_cache_fns
+*/
 
 	cpu_name = list->cpu_name;
 	__cpu_architecture = __get_cpu_architecture();
@@ -604,9 +641,11 @@ static void __init setup_processor(void)
 	cpu_tlb = *list->tlb;
 #endif
 #ifdef MULTI_USER
+	/*[lksq:20150718]arch/arm/mm/copypage-v6.c에서 v6_user_fns로 검색. */
 	cpu_user = *list->user;
 #endif
 #ifdef MULTI_CACHE
+	/*[lksq:20150718]arch/arm/mm/cache-v7.S에 있음.(v7_flush_*) */
 	cpu_cache = *list->cache;
 #endif
 
@@ -626,6 +665,11 @@ static void __init setup_processor(void)
 	elf_hwcap &= ~(HWCAP_THUMB | HWCAP_IDIVT);
 #endif
 #ifdef CONFIG_MMU
+/*
+   [lksq:20150718]
+   cpu_mm_mmu_flags 값 : ALT_SMP(.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | PMD_SECT_AP_READ | \
+					PMD_SECT_AF | PMD_FLAGS_SMP | \mm_mmuflags)
+*/
 	init_default_cache_policy(list->__cpu_mm_mmu_flags);
 #endif
 	erratum_a15_798181_init();

@@ -141,6 +141,7 @@ void __init init_default_cache_policy(unsigned long pmd)
 			break;
 		}
 
+	//[lksq:20150718]cache policy는 writealloc으로 setting됨.
 	if (i == ARRAY_SIZE(cache_policies))
 		pr_err("ERROR: could not find cache policy\n");
 }

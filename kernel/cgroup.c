@@ -1580,11 +1580,11 @@ static void init_cgroup_root(struct cgroup_root *root,
 	INIT_LIST_HEAD(&root->root_list);
 	atomic_set(&root->nr_cgrps, 1);
 	cgrp->root = root;
-	init_cgroup_housekeeping(cgrp);
-	idr_init(&root->cgroup_idr);
-
+	init_cgroup_housekeeping(cgrp);/* [lksq:20150711] cgroup list, work struct, initalizing */
+	idr_init(&root->cgroup_idr);/* [lksq:20150711] idr(ID of cgroup 구조) initalizing */
+    /* [lksq:20150711] 이 이후 라인은 cgroup_mount에서 의미 있는 부분 */
 	root->flags = opts->flags;
-	if (opts->release_agent)
+	if (opts->release_agent) /* [lksq:20150711] cgroup_mount 에서 본 함수 호술시 static 선언된 cgroup_sb_opts 내부값들이 사용됨, 최초 call 시 0  */
 		strcpy(root->release_agent_path, opts->release_agent);
 	if (opts->name)
 		strcpy(root->name, opts->name);
@@ -4886,11 +4886,11 @@ int __init cgroup_init_early(void)
 	int i;
 
 	init_cgroup_root(&cgrp_dfl_root, &opts);
-	cgrp_dfl_root.cgrp.self.flags |= CSS_NO_REF;
+	cgrp_dfl_root.cgrp.self.flags |= CSS_NO_REF; /* [lksq:20150711] CSS_ONLINE | CSS_NO_REF */
 
-	RCU_INIT_POINTER(init_task.cgroups, &init_css_set);
+	RCU_INIT_POINTER(init_task.cgroups, &init_css_set);/* [lksq:20150711] init_css_set type casting "__rcu __force" */
 
-	for_each_subsys(ss, i) {
+	for_each_subsys(ss, i) { /* [lksq:20150711] for_each_subsys 내부에서 include/linux/cgroup_subsys.h 를 참조하여 이에 따라 각 subsystem을 등록함 */
 		WARN(!ss->css_alloc || !ss->css_free || ss->name || ss->id,
 		     "invalid cgroup_subsys %d:%s css_alloc=%p css_free=%p name:id=%d:%s\n",
 		     i, cgroup_subsys_name[i], ss->css_alloc, ss->css_free,
@@ -4901,7 +4901,7 @@ int __init cgroup_init_early(void)
 		ss->id = i;
 		ss->name = cgroup_subsys_name[i];
 
-		if (ss->early_init)
+		if (ss->early_init) /* [lksq:20150711] 이곳의 early_init 값은 등록된(cgroup_subsys.h 참조)  각 subsystem 구조체 내부의 정의된 상수값에 따라 달라짐 */
 			cgroup_init_subsys(ss, true);
 	}
 	return 0;

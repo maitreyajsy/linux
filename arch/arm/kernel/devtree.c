@@ -201,6 +201,7 @@ static const void * __init arch_get_next_mach(const char *const **match)
  * If a dtb was passed to the kernel in r2, then use it to choose the
  * correct machine_desc and to setup the system.
  */
+/* [lksq:20150725] device tree binary, 참조 arch/arm/boot/dts/bcm27090-rpi-2-b.dts --> generation dtb파일 생성됨  */
 const struct machine_desc * __init setup_machine_fdt(unsigned int dt_phys)
 {
 	const struct machine_desc *mdesc, *mdesc_best = NULL;
@@ -211,12 +212,12 @@ const struct machine_desc * __init setup_machine_fdt(unsigned int dt_phys)
 
 	mdesc_best = &__mach_desc_GENERIC_DT;
 #endif
-
+ /* [lksq:20150725] flat device tree = fdt */
 	if (!dt_phys || !early_init_dt_verify(phys_to_virt(dt_phys)))
 		return NULL;
 
 	mdesc = of_flat_dt_match_machine(mdesc_best, arch_get_next_mach);
-
+/* [lksq:20150725] 참조 arch/arm/mach-bcm2709.c */
 	if (!mdesc) {
 		const char *prop;
 		int size;
@@ -238,7 +239,7 @@ const struct machine_desc * __init setup_machine_fdt(unsigned int dt_phys)
 	}
 
 	/* We really don't want to do this, but sometimes firmware provides buggy data */
-	if (mdesc->dt_fixup)
+	if (mdesc->dt_fixup) /* [lksq:20150725] bcm2709 fix-up is NULL so , pass */
 		mdesc->dt_fixup();
 
 	early_init_dt_scan_nodes();
