@@ -4826,6 +4826,7 @@ static struct kernfs_syscall_ops cgroup_kf_syscall_ops = {
 
 static void __init cgroup_init_subsys(struct cgroup_subsys *ss, bool early)
 {
+	/* [lksq:20150730-private] cgroup에 적용된 서브시스템의 설정을 담고 있는 구조체 cgroup_subsys_state 약어 css */
 	struct cgroup_subsys_state *css;
 
 	printk(KERN_INFO "Initializing cgroup subsys %s\n", ss->name);
@@ -4860,6 +4861,11 @@ static void __init cgroup_init_subsys(struct cgroup_subsys *ss, bool early)
 	 * pointer to this state - since the subsystem is
 	 * newly registered, all tasks and hence the
 	 * init_css_set is in the subsystem's root cgroup. */
+
+    /* [lksq:20150730-private] css_set구조체 프로세스 관점의 구조체 프로세스 task_struct 속함
+	 * 프로세스관점에서는 하나이상의 cgroup에 동시에 속할 수 있다 task가 속한 cgroup에 따라 cgroup_subsys_state 개수도 늘어남
+	 * cgroup_subsys_state를 빠르게 참조하기 위해 css_set이란 구조체를 사용한다
+	 */
 	init_css_set.subsys[ss->id] = css;
 
 	need_forkexit_callback |= ss->fork || ss->exit;
@@ -4886,10 +4892,11 @@ int __init cgroup_init_early(void)
 	struct cgroup_subsys *ss;
 	int i;
 
-	init_cgroup_root(&cgrp_dfl_root, &opts);
+	init_cgroup_root(&cgrp_dfl_root, &opts); /* [lksq:20150730-private] cgroup root구조체 변수와 자신이 속한 cgroup계층도의 top cgroup을 연결해주고 관련 자료구조를 초기화 한다 */
 	cgrp_dfl_root.cgrp.self.flags |= CSS_NO_REF; /* [lksq:20150711] CSS_ONLINE | CSS_NO_REF */
 
 	RCU_INIT_POINTER(init_task.cgroups, &init_css_set); /* [lksq:20150711] init_css_set type casting "__rcu __force" */
+	/* [lksq:20150730-private] init_css_set 을 init 타스크의 css_set으로 지정 */
 
 	for_each_subsys(ss, i) {   /* [lksq:20150711] for_each_subsys 내부에서 include/linux/cgroup_subsys.h 를 참조하여 이에 따라 각 subsystem을 등록함 */
 		WARN(!ss->css_alloc || !ss->css_free || ss->name || ss->id,
@@ -4904,6 +4911,7 @@ int __init cgroup_init_early(void)
 
 		if (ss->early_init)  /* [lksq:20150711] 이곳의 early_init 값은 등록된(cgroup_subsys.h 참조)  각 subsystem 구조체 내부의 정의된 상수값에 따라 달라짐 */
 			cgroup_init_subsys(ss, true);
+		    /* [lksq:20150730-private] 인자로 넘어온 서브시스템 ss를 초기화 함 */
 	}
 	return 0;
 }

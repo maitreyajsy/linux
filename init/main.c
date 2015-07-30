@@ -518,9 +518,13 @@ asmlinkage __visible void __init start_kernel(void)
 	 */
 	boot_init_stack_canary(); /* [lksq:20150711] random byte 생성하여 stack guard 와 init task structure 의 stack canary 값을 초기화, rasp에서는 CONFIG_CC_STACKPROTECTOR 미정의로 빈함수  */
 
+    /* [lksq:20150730-private] cgroup은 프로세스들을 그룹화 하여 그룹에게 자원을 분배하거나 제어하는 기능을 제공
+     * cgroup은 프로세스들을 그룹화하는 방법만을 제공하는 메커니즘이며 프로세스 그룹을 제어하거나 자원을 분배하는 역할은 서브시스템에서 담당한다
+     * cgroup은 cgroup_init_early 와 cgroup_init 두번에 나누어 진행됨
+     */
 	cgroup_init_early();
 
-	local_irq_disable();
+	local_irq_disable(); /* [lksq:20150730-private] 현재 부팅을 수행하는 CPU의 IRQ를 비활성화한다 */
 	early_boot_irqs_disabled = true;
 
 /*
