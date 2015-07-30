@@ -45,14 +45,14 @@
  *  r5, r6 corrupted
  */
 __vet_atags:
-	tst	r2, #0x3			@ aligned?
-	bne	1f
+	tst	r2, #0x3			@ aligned? /* [lksq:20150627] r2가 0 이면 and 연산 결과 0 이므로 zero flag set  ???*/
+	bne	1f                  /* [lksq:20150627] zeo flag not set 일때 실행 */
 
 	ldr	r5, [r2, #0]
 #ifdef CONFIG_OF_FLATTREE
 	ldr	r6, =OF_DT_MAGIC		@ is it a DTB?
 	cmp	r5, r6
-	beq	2f
+	beq	2f                  /* [lksq:20150627] r5 와 r6가 같은 것으로 예상 2f로 빠질 것이므로 이후 pass */
 #endif
 	cmp	r5, #ATAG_CORE_SIZE		@ is first tag ATAG_CORE?
 	cmpne	r5, #ATAG_CORE_SIZE_EMPTY
@@ -150,13 +150,13 @@ ENDPROC(lookup_processor_type)
  *	r9 = cpuid (preserved)
  */
 __lookup_processor_type:
-	adr	r3, __lookup_processor_type_data
-	ldmia	r3, {r4 - r6}
-	sub	r3, r3, r4			@ get offset between virt&phys
-	add	r5, r5, r3			@ convert virt addresses to
+	adr	r3, __lookup_processor_type_data @ [lksq:20150627] 174 line
+	ldmia	r3, {r4 - r6}   @ [lksq:20150627] 174라인의 . begin end 3개가 register r4,r5,r6 에 들어감
+	sub	r3, r3, r4			@ get offset between virt&phys @ [lksq:20150627] r3은 물리주소 r4는 가상주소 .
+	add	r5, r5, r3			@ convert virt addresses to @ [lksq:20150627] r5 : proc_info_begin, r6 : proc_info_end
 	add	r6, r6, r3			@ physical address space
 1:	ldmia	r5, {r3, r4}			@ value, mask
-	and	r4, r4, r9			@ mask wanted bits
+	and	r4, r4, r9			@ mask wanted bits @ [lksq:20150627] r9은 head.s에서 온값 cpuid
 	teq	r3, r4
 	beq	2f
 	add	r5, r5, #PROC_INFO_SZ		@ sizeof(proc_info_list)
@@ -172,8 +172,8 @@ ENDPROC(__lookup_processor_type)
 	.align	2
 	.type	__lookup_processor_type_data, %object
 __lookup_processor_type_data:
-	.long	.
-	.long	__proc_info_begin
+	.long	.   @ [lksq:20150627] 코드의 가상주소 값
+	.long	__proc_info_begin   @ [lksq:20150627] arch/arm/mm/xxxx procxxxx.s 파일을 참조
 	.long	__proc_info_end
 	.size	__lookup_processor_type_data, . - __lookup_processor_type_data
 

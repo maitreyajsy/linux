@@ -116,26 +116,26 @@
 		.align
 		.arm				@ Always enter in ARM state
 start:
-		.type	start,#function
-		.rept	7
+		.type	start,#function @ 타입이 function 임
+		.rept	7 @ rept 와 endr 사이의 내용을 7번 수행함 @ 초반에 딜레이를 주기위함 인것으로 보임
 		mov	r0, r0
 		.endr
    ARM(		mov	r0, r0		)
-   ARM(		b	1f		)
- THUMB(		adr	r12, BSYM(1f)	)
+   ARM(		b	1f		) @ f는 forward 임 1은 라벨 아래 134번 줄의 라벨로 뜀
+ THUMB(		adr	r12, BSYM(1f)	) @ thumb는 패스
  THUMB(		bx	r12		)
 
-		.word	_magic_sig	@ Magic numbers to help the loader
+		.word	_magic_sig	@ Magic numbers to help the loader @ macro 임  vmlinux.lds 에 _magic_sig .... 값이 나와있음
 		.word	_magic_start	@ absolute load/run zImage address
 		.word	_magic_end	@ zImage end address
 		.word	0x04030201	@ endianness flag
 
  THUMB(		.thumb			)
 1:
- ARM_BE8(	setend	be )			@ go BE8 if compiled for BE8
+ ARM_BE8(	setend	be )			@ go BE8 if compiled for BE8 @ ARM_BE8 정의를 찾아보면 아무것도 안함 define none
 		mrs	r9, cpsr
 #ifdef CONFIG_ARM_VIRT_EXT
-		bl	__hyp_stub_install	@ get into SVC mode, reversibly
+		bl	__hyp_stub_install	@ get into SVC mode, reversibly @ hyp-stup.s zImage의 경우 none
 #endif
 		mov	r7, r1			@ save architecture ID
 		mov	r8, r2			@ save atags pointer
@@ -145,15 +145,15 @@ start:
 		 * FIQs/IRQs (numeric definitions from angel arm.h source).
 		 * We only do this if we were in user mode on entry.
 		 */
-		mrs	r2, cpsr		@ get current mode
-		tst	r2, #3			@ not user?
-		bne	not_angel
+		mrs	r2, cpsr		@ get current mode @ move to register cpsr -> r2
+		tst	r2, #3			@ not user?  @ check usermode
+		bne	not_angel                    @ go to not_angel 154 line
 		mov	r0, #0x17		@ angel_SWIreason_EnterSVC
  ARM(		swi	0x123456	)	@ angel_SWI_ARM
  THUMB(		svc	0xab		)	@ angel_SWI_THUMB
 not_angel:
-		safe_svcmode_maskall r0
-		msr	spsr_cxsf, r9		@ Save the CPU boot mode in
+		safe_svcmode_maskall r0   @ 현재 r0에는 아무것도 없는 상태, i비트f비트 서비스모드 세팅
+		msr	spsr_cxsf, r9		@ Save the CPU boot mode in @ spsr_cxsf 매크로임 찾아볼것 위에서 r9은 cpsr값이 저장되어있는상태임 이를 spsr로 저장함
 						@ SPSR
 		/*
 		 * Note that some cache flushing and other stuff may
@@ -173,7 +173,7 @@ not_angel:
 		and	r4, r4, #0xf8000000
 		add	r4, r4, #TEXT_OFFSET
 #else
-		ldr	r4, =zreladdr
+		ldr	r4, =zreladdr   @ ZRELADDR 찾아볼것 r4 0x8000 번지 들어감 =이 들어갔으므로 상수이고 mov와 같은 효과 bcm2709 makefile.boot 참고
 #endif
 
 		/*
@@ -182,43 +182,43 @@ not_angel:
 		 * Given that r4 > &_end is most unfrequent, we add a rough
 		 * additional 1MB of room for a possible appended DTB.
 		 */
-		mov	r0, pc
-		cmp	r0, r4
-		ldrcc	r0, LC0+32
+		mov	r0, pc    @ ldrcc => pc
+		cmp	r0, r4   @ ldrcc 와 비교 r0-r4   주석에 있는 첫번째 조건
+		ldrcc	r0, LC0+32 @ r4가 더 크면 cc 붙은 명령어 실행
 		addcc	r0, r0, pc
-		cmpcc	r4, r0
-		orrcc	r4, r4, #1		@ remember we skipped cache_on
+		cmpcc	r4, r0      @ 주석에 있는 2번째 조건임
+		orrcc	r4, r4, #1		@ remember we skipped cache_on  @ 이뜻은 결국 ldrcc 쪽으로 간다는 뜻 ==> 나중에 cache on 을 갔는지 아닌지 확인을 위함
 		blcs	cache_on
 
-restart:	adr	r0, LC0
-		ldmia	r0, {r1, r2, r3, r6, r10, r11, r12}
-		ldr	sp, [r0, #28]
+restart:	adr	r0, LC0  @ LC0의 주소를 r0에 넣는다
+		ldmia	r0, {r1, r2, r3, r6, r10, r11, r12} @ LC0 의 레지스터와 매핑된다 그대로....
+		ldr	sp, [r0, #28]   @ 7번째 것을 sp 로 로드 stack사이즈 4096으로 세팅 LC0 object에서 확인가능 524 line
 
 		/*
 		 * We might be running at a different address.  We need
 		 * to fix up various pointers.
 		 */
-		sub	r0, r0, r1		@ calculate the delta offset
-		add	r6, r6, r0		@ _edata
-		add	r10, r10, r0		@ inflated kernel size location
+		sub	r0, r0, r1		@ calculate the delta offset @ 이것은 disassem objdump 해서 보면 193line adr은 add pc를 기준으로 하는 방식으로 변경되어있으므로 r0값이 변경될수 있음
+		add	r6, r6, r0		@ _edata   @ data section end                  @ ==> 402번 라인을 보면 mov pc r0 명령어와 함께 restart가 불려지는 경우가 있음
+		add	r10, r10, r0		@ inflated kernel size location   @ piggy.gzip.S 에 보면 r10 즉 input_data_end 의 바로위에 piggy.gzip, 명령어 incbin, 파일을 통째로 포함시켜 vmlinux 생성
 
 		/*
 		 * The kernel build system appends the size of the
 		 * decompressed kernel at the end of the compressed data
-		 * in little-endian form.
+		 * in little-endian form.    @ --> 검색하면 나옴 gzip 의 마지막 lastbyte에 압출풀린 커널의 사이즈가 표시되있음 determine uncompressed size of GZIP file
 		 */
-		ldrb	r9, [r10, #0]
-		ldrb	lr, [r10, #1]
+		ldrb	r9, [r10, #0]  @ r10은 piggy.gzip 바이너리 위치를 가리키는 incbin 명령어 부분을 가리키는데 실제로는 input_data_end - 4 로 계산되므로 마지막 byte를 가리키게됨
+		ldrb	lr, [r10, #1]   @ lr 은 빈공간으로서...
 		orr	r9, r9, lr, lsl #8
 		ldrb	lr, [r10, #2]
 		ldrb	r10, [r10, #3]
 		orr	r9, r9, lr, lsl #16
-		orr	r9, r9, r10, lsl #24
+		orr	r9, r9, r10, lsl #24   @ 결국 big endian 으로 바꾸어줌 ?
 
 #ifndef CONFIG_ZBOOT_ROM
 		/* malloc space is above the relocated stack (64k max) */
-		add	sp, sp, r0
-		add	r10, sp, #0x10000
+		add	sp, sp, r0                       @ relocated 시   stack pointer도 교정함
+		add	r10, sp, #0x10000                @ 64k heap 러프설정
 #else
 		/*
 		 * With ZBOOT_ROM the bss/stack is non relocatable,
@@ -325,11 +325,11 @@ restart:	adr	r0, LC0
 		add	r10, r10, r5
 		add	sp, sp, r5
 dtb_check_done:
-#endif
+#endif    @ arm appended dtb 끝  이 구간 패스
 
 /*
- * Check to see if we will overwrite ourselves.
- *   r4  = final kernel address (possibly with LSB set)
+ * Check to see if we will overwrite ourselves.    @ not defined
+ *   r4  = final kernel address (possibly with LSB set) @ 이곳이 압축을 풀곳 8000 번지
  *   r9  = size of decompressed image
  *   r10 = end of this image, including  bss/stack/malloc space if non XIP
  * We basically want:
@@ -340,9 +340,9 @@ dtb_check_done:
 		add	r10, r10, #16384
 		cmp	r4, r10
 		bhs	wont_overwrite
-		add	r10, r4, r9
-		adr	r9, wont_overwrite
-		cmp	r10, r9
+		add	r10, r4, r9 @ r10 = 0x8000 + r9(= 압축된 커널 사이즈)
+		adr	r9, wont_overwrite @ 0x8188 wont_overwrite 는 188번지 from objdump
+		cmp	r10, r9            @ 여전히 r10이 크다   @ 두번째로 relocation 이후에 호출시 wont overwrite는 결국 r10뒤로 가므로 bls 아래라인들어감
 		bls	wont_overwrite
 
 /*
@@ -357,12 +357,12 @@ dtb_check_done:
 		 * the relocation code added. This avoids overwriting
 		 * ourself when the offset is small.
 		 */
-		add	r10, r10, #((reloc_code_end - restart + 256) & ~255)
-		bic	r10, r10, #255
+		add	r10, r10, #((reloc_code_end - restart + 256) & ~255) @ bic r10 r10 #255 와 효과가 비슷한 내용이 있는데 왜 361 라인이 있을까 ???
+		bic	r10, r10, #255                                       @ 왜 256일까? 대충대충 정한것이 않을까 ??
 
 		/* Get start of code we want to copy and align it down. */
 		adr	r5, restart
-		bic	r5, r5, #31
+		bic	r5, r5, #31  @ 5비트 클리어  restart de assemble 했을때 8개 명령어를 포함시키기위함 아래 381라인에서 의 사이즈 계산할때 아니면 단순히 얼라인??
 
 /* Relocate the hyp vector base if necessary */
 #ifdef CONFIG_ARM_VIRT_EXT
@@ -378,19 +378,19 @@ dtb_check_done:
 1:
 #endif
 
-		sub	r9, r6, r5		@ size to copy
+		sub	r9, r6, r5		@ size to copy   edata - restart 그러므로 r9에는 복사된 이미지의 크기가 들어감text rodata piggy got를 포함하는 크기
 		add	r9, r9, #31		@ rounded up to a multiple
-		bic	r9, r9, #31		@ ... of 32 bytes
-		add	r6, r9, r5
-		add	r9, r9, r10
+		bic	r9, r9, #31		@ ... of 32 bytes             32 바이트 더하고 클리어 align
+		add	r6, r9, r5      @ r6는 소스 =  r5는 restart 라벨 + 복사할 사이즈(r9)  결국 r6는 edata 복사가 거꾸로 이루어짐...그래서 소스위치를 r6로 가리킴
+		add	r9, r9, r10     @ r9는 destination =  r10 = 0x8000 + 원본사이즈 + text size(reloc_code_end - restart) + something ?
 
-1:		ldmdb	r6!, {r0 - r3, r10 - r12, lr}
+1:		ldmdb	r6!, {r0 - r3, r10 - r12, lr}    @ 이부분이 relocation 파트임
 		cmp	r6, r5
 		stmdb	r9!, {r0 - r3, r10 - r12, lr}
 		bhi	1b
 
 		/* Preserve offset to relocated code. */
-		sub	r6, r9, r6
+		sub	r6, r9, r6   @  relocation offset  r6 =  r9 - r6
 
 #ifndef CONFIG_ZBOOT_ROM
 		/* cache_clean_flush may use the stack, so relocate it */
@@ -401,7 +401,7 @@ dtb_check_done:
 
 		adr	r0, BSYM(restart)
 		add	r0, r0, r6
-		mov	pc, r0
+		mov	pc, r0                  @ r6로 복사된 offset을 더하고 복사된 영역의 restart로 jump
 
 wont_overwrite:
 /*
@@ -417,8 +417,8 @@ wont_overwrite:
  *   r12 = GOT end
  *   sp  = stack pointer
  */
-		orrs	r1, r0, r5
-		beq	not_relocated
+		orrs	r1, r0, r5  @ dtb config 가 안켜져있으므로 현재는 0
+		beq	not_relocated   @ pass r0는 0 이 아니다
 
 		add	r11, r11, r0
 		add	r12, r12, r0
@@ -436,11 +436,11 @@ wont_overwrite:
 		 * Relocate all entries in the GOT table.
 		 * Bump bss entries to _edata + dtb size
 		 */
-1:		ldr	r1, [r11, #0]		@ relocate entries in the GOT
-		add	r1, r1, r0		@ This fixes up C references
-		cmp	r1, r2			@ if entry >= bss_start &&
-		cmphs	r3, r1			@       bss_end > entry
-		addhi	r1, r1, r5		@    entry += dtb size
+1:		ldr	r1, [r11, #0]		@ relocate entries in the GOT    @  global offset table
+		add	r1, r1, r0		@ This fixes up C references  @ got 테이블 안에 있는 주소값도 마찬가지로 재배치 offset만큼 옮겨진다.
+		cmp	r1, r2			@ if entry >= bss_start &&    @ got에서 가져온 값 r1 중에서 bss 영역에 있는 것이면 재배치 오프셋 뿐만아니라 dtb 사이즈도 추가로 더해줌
+		cmphs	r3, r1			@       bss_end > entry   @ bss는 초기화되지 않은 변수들 이영역안에 있는 것이라면 결국 변수값임 변수값의 주소에 dtb 사이즈를 더해주는작업임
+		addhi	r1, r1, r5		@    entry += dtb size   @ 그런데 우리는 옵션상 dtb size = 0
 		str	r1, [r11], #4		@ next entry
 		cmp	r11, r12
 		blo	1b
@@ -465,7 +465,7 @@ wont_overwrite:
 #endif
 
 not_relocated:	mov	r0, #0
-1:		str	r0, [r2], #4		@ clear bss
+1:		str	r0, [r2], #4		@ clear bss   말 그대로 clear
 		str	r0, [r2], #4
 		str	r0, [r2], #4
 		str	r0, [r2], #4
@@ -477,9 +477,9 @@ not_relocated:	mov	r0, #0
 		 * That is indicated by the LSB in r4.
 		 * Do it now if so.
 		 */
-		tst	r4, #1
+		tst	r4, #1                 @ 위에서 orrcc를 안갔을 것이므로 8000 과 1을 비교함  and bit 연산의 결과 0 가되므로 zero flag가 1로  세팅됨
 		bic	r4, r4, #1
-		blne	cache_on
+		blne	cache_on    @ not zero flag 가 0 일때 실행된다. 그러므로 실행되지 않는다
 
 /*
  * The C runtime environment should now be setup sufficiently.
@@ -489,16 +489,16 @@ not_relocated:	mov	r0, #0
  *   r8  = atags pointer
  */
 		mov	r0, r4
-		mov	r1, sp			@ malloc space above stack
-		add	r2, sp, #0x10000	@ 64k max
+		mov	r1, sp			@ malloc space above stack @  heap start
+		add	r2, sp, #0x10000	@ 64k max   @ stack 위에 heap 을 새로이 잡는다 heap end
 		mov	r3, r7
-		bl	decompress_kernel
+		bl	decompress_kernel   @ decompress
 		bl	cache_clean_flush
 		bl	cache_off
 		mov	r1, r7			@ restore architecture number
 		mov	r2, r8			@ restore atags pointer
 
-#ifdef CONFIG_ARM_VIRT_EXT
+#ifdef CONFIG_ARM_VIRT_EXT   @ define 되어있음
 		mrs	r0, spsr		@ Get saved CPU boot mode
 		and	r0, r0, #MODE_MASK
 		cmp	r0, #HYP_MODE		@ if not booted in HYP mode...
@@ -529,7 +529,7 @@ LC0:		.word	LC0			@ r1
 		.word	_got_start		@ r11
 		.word	_got_end		@ ip
 		.word	.L_user_stack_end	@ sp
-		.word	_end - restart + 16384 + 1024*1024
+		.word	_end - restart + 16384 + 1024*1024 @ 16384 = 16k  additional 1MB(1024*1024)
 		.size	LC0, . - LC0
 
 #ifdef CONFIG_ARCH_RPC
@@ -559,7 +559,7 @@ params:		ldr	r0, =0x10000100		@ params_phys for RPC
  */
 		.align	5
 cache_on:	mov	r3, #8			@ cache_on function
-		b	call_cache_fn
+		b	call_cache_fn  @ 여기서 cpu ID를 찾고  cache on off 등의 함수포인터를 세팅한다
 
 /*
  * Initialize the highest priority protection region, PR7
@@ -631,40 +631,40 @@ __armv3_mpu_cache_on:
 
 __setup_mmu:	sub	r3, r4, #16384		@ Page directory size
 		bic	r3, r3, #0xff		@ Align the pointer
-		bic	r3, r3, #0x3f00
+		bic	r3, r3, #0x3f00   @ r4=8000 r3=0x8000 - 16384 =  0x4000
 /*
  * Initialise the page tables, turning on the cacheable and bufferable
  * bits for the RAM area only.
  */
 		mov	r0, r3
-		mov	r9, r0, lsr #18
-		mov	r9, r9, lsl #18		@ start of RAM
-		add	r10, r9, #0x10000000	@ a reasonable RAM size
-		mov	r1, #0x12		@ XN|U + section mapping
+		mov	r9, r0, lsr #18      @ 18개를 밀고
+		mov	r9, r9, lsl #18		@ start of RAM  18개를 다시 가져오면 날아감 18개의 bit가 날아감 그렇게 하면 물리메모리 start가 나옴 ?
+		add	r10, r9, #0x10000000	@ a reasonable RAM size , RAM size를 적당히 256MB 으로 설정 r10 = 0x0 + 256MB , r9은 실제적으로 0x00 ?
+		mov	r1, #0x12		@ XN|U + section mapping   4096 개의 page entry가 있음 head.s 에서 mmu setting을 하기 위해 어떤 값을 집어넣음?
 		orr	r1, r1, #3 << 10	@ AP=11
-		add	r2, r3, #16384
+		add	r2, r3, #16384  @ r2=0x8000 = r3 + 16384 = 0x4000 + 0x4000
 1:		cmp	r1, r9			@ if virt > start of RAM
-		cmphs	r10, r1			@   && end of RAM > virt
+		cmphs	r10, r1			@   && end of RAM > virt   ,  if( r1 > start of ram) && (r1 <256MB(r10)) cacheable buffer 설정
 		bic	r1, r1, #0x1c		@ clear XN|U + C + B
-		orrlo	r1, r1, #0x10		@ Set XN|U for non-RAM
-		orrhs	r1, r1, r6		@ set RAM section settings
-		str	r1, [r0], #4		@ 1:1 mapping
-		add	r1, r1, #1048576
-		teq	r0, r2
+		orrlo	r1, r1, #0x10		@ Set XN|U for non-RAM ,  256 이상
+		orrhs	r1, r1, r6		@ set RAM section settings  , r6, #CB_BITS | 0x12     256이하
+		str	r1, [r0], #4		@ 1:1 mapping  , r0 = 0x4000 += 4;
+		add	r1, r1, #1048576    @ add 1MB ,, 1MB 단위로 mapping  PTE는 4byte
+		teq	r0, r2              @ 4000번지 부터 시작해서 8000 번지로 가는데 넘어가지 않도록 , 즉 4096개의 entry를 다 도는데 256개는 648~650처럼 세팅
 		bne	1b
 /*
  * If ever we are running from Flash, then we surely want the cache
  * to be enabled also for our execution instance...  We map 2MB of it
  * so there is no map overlap problem for up to 1 MB compressed kernel.
  * If the execution is in RAM then we would only be duplicating the above.
- */
-		orr	r1, r6, #0x04		@ ensure B is set for this
-		orr	r1, r1, #3 << 10
+ */     @ xip nor flash 를 위한 setting으로 보임
+		orr	r1, r6, #0x04		@ ensure B is set for this  @ r1 바뀜 여기서
+		orr	r1, r1, #3 << 10  @ #CB_BITS | 0x12 | 0x04 | 3 << 10
 		mov	r2, pc
-		mov	r2, r2, lsr #20
-		orr	r1, r1, r2, lsl #20
-		add	r0, r3, r2, lsl #2
-		str	r1, [r0], #4
+		mov	r2, r2, lsr #20   @  pte 물리 주소값만 남기고 세팅 값을 모두 날림
+		orr	r1, r1, r2, lsl #20 @  current pc  하위 20bit 를 날린것 과  r1을 orring 함
+		add	r0, r3, r2, lsl #2  @ r0 = page table index ?  = page table + index(r2 << 2), page_table[index] = r1
+		str	r1, [r0], #4        @  r1 = r0값 그런뒤에 인덱스 1증가(+#4)
 		add	r1, r1, #1048576
 		str	r1, [r0]
 		mov	pc, lr
@@ -703,13 +703,13 @@ __armv4_mmu_cache_on:
 #endif
 		mov	pc, r12
 
-__armv7_mmu_cache_on:
+__armv7_mmu_cache_on:   @  cache on 이후 여기로 뛸 것이다 우리는 arm7일테니까
 		mov	r12, lr
 #ifdef CONFIG_MMU
 		mrc	p15, 0, r11, c0, c1, 4	@ read ID_MMFR0
 		tst	r11, #0xf		@ VMSA
 		movne	r6, #CB_BITS | 0x02	@ !XN
-		blne	__setup_mmu
+		blne	__setup_mmu  @ setup_mmu로 뛴다 632 line
 		mov	r0, #0
 		mcr	p15, 0, r0, c7, c10, 4	@ drain write buffer
 		tst	r11, #0xf		@ VMSA

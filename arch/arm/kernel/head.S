@@ -52,8 +52,8 @@
 	.equ	swapper_pg_dir, KERNEL_RAM_VADDR - PG_DIR_SIZE
 
 	.macro	pgtbl, rd, phys
-	add	\rd, \phys, #TEXT_OFFSET
-	sub	\rd, \rd, #PG_DIR_SIZE
+	add	\rd, \phys, #TEXT_OFFSET /* [lksq:20150627] rd = 8000 */
+	sub	\rd, \rd, #PG_DIR_SIZE /* [lksq:20150627] rd = 4000 = r4 */
 	.endm
 
 /*
@@ -76,7 +76,7 @@
  */
 	.arm
 
-	__HEAD
+	__HEAD  @ 압축을 안했을 경우 바로 뛰는 곳
 ENTRY(stext)
  ARM_BE8(setend	be )			@ ensure we are in BE8 mode
 
@@ -86,16 +86,16 @@ ENTRY(stext)
  THUMB(1:			)
 
 #ifdef CONFIG_ARM_VIRT_EXT
-	bl	__hyp_stub_install
+	bl	__hyp_stub_install  @ [lksq:20150627] 현재의 cpu 모드를 저장 ?
 #endif
 	@ ensure svc mode and all interrupts masked
-	safe_svcmode_maskall r9
+	safe_svcmode_maskall r9 @ [lksq:20150627] 인터럽트 및 svc 모드 세팅 arch/arm/include/asm/assembler.h
 
 	mrc	p15, 0, r9, c0, c0		@ get processor id
-	bl	__lookup_processor_type		@ r5=procinfo r9=cpuid
-	movs	r10, r5				@ invalid processor (r5=0)?
+	bl	__lookup_processor_type		@ r5=procinfo r9=cpuid @ [lksq:20150627] arch/arm/kernel/head-common.s
+	movs	r10, r5				@ invalid processor (r5=0)? /* [lksq:20150627] 못찾으면 r5에는 0 */
  THUMB( it	eq )		@ force fixup-able long branch encoding
-	beq	__error_p			@ yes, error 'p'
+	beq	__error_p			@ yes, error 'p' /* [lksq:20150627] head-common.s 195 line __error_p */
 
 #ifdef CONFIG_ARM_LPAE
 	mrc	p15, 0, r3, c0, c1, 4		@ read ID_MMFR0
@@ -106,21 +106,21 @@ ENTRY(stext)
 #endif
 
 #ifndef CONFIG_XIP_KERNEL
-	adr	r3, 2f
-	ldmia	r3, {r4, r8}
-	sub	r4, r3, r4			@ (PHYS_OFFSET - PAGE_OFFSET)
-	add	r8, r8, r4			@ PHYS_OFFSET
+	adr	r3, 2f               /* [lksq:20150627] 2 label 은 148 line */
+	ldmia	r3, {r4, r8}     /* [lksq:20150627] r4 = . r8 = PAGE_OFFSET */
+	sub	r4, r3, r4			@ (PHYS_OFFSET - PAGE_OFFSET) /* [lksq:20150627] 주석이상? */
+	add	r8, r8, r4			@ PHYS_OFFSET /* [lksq:20150627] r8 실제 물리주소  */
 #else
 	ldr	r8, =PLAT_PHYS_OFFSET		@ always constant in this case
 #endif
 
 	/*
 	 * r1 = machine no, r2 = atags or dtb,
-	 * r8 = phys_offset, r9 = cpuid, r10 = procinfo
+	 * r8 = phys_offset, r9 = cpuid, r10 = procinfo /* [lksq:20150627] 라즈베리파이에서는 r8 = 0 */
 	 */
-	bl	__vet_atags
+	bl	__vet_atags /* [lksq:20150627] head-common.s 에 있음  */
 #ifdef CONFIG_SMP_ON_UP
-	bl	__fixup_smp
+	bl	__fixup_smp /* [lksq:20150627] pass */
 #endif
 #ifdef CONFIG_ARM_PATCH_PHYS_VIRT
 	bl	__fixup_pv_table
@@ -138,7 +138,7 @@ ENTRY(stext)
 						@ mmu has been enabled
 	adr	lr, BSYM(1f)			@ return (PIC) address
 	mov	r8, r4				@ set TTBR1 to swapper_pg_dir
- ARM(	add	pc, r10, #PROCINFO_INITFUNC	)
+ ARM(	add	pc, r10, #PROCINFO_INITFUNC	)    /* [lksq:20150627]  __v7_ca7mp_setup 호출  -> __v7_setup 호출 cpu setup 이므로 자세한 내용은 패스
  THUMB(	add	r12, r10, #PROCINFO_INITFUNC	)
  THUMB(	ret	r12				)
 1:	b	__enable_mmu
@@ -161,14 +161,14 @@ ENDPROC(stext)
  *  r4 = page table (see ARCH_PGD_SHIFT in asm/memory.h)
  */
 __create_page_tables:
-	pgtbl	r4, r8				@ page table address
+	pgtbl	r4, r8				@ page table address /* [lksq:20150627] r4 = 4000 = TEXT_OFFSET + phyOffset - PG_diretory_size, 54 line */
 
 	/*
 	 * Clear the swapper page table
 	 */
 	mov	r0, r4
 	mov	r3, #0
-	add	r6, r0, #PG_DIR_SIZE
+	add	r6, r0, #PG_DIR_SIZE     /* [lksq:20150627] 1 레이블은 초기화하는 코드 r6는 8000 */
 1:	str	r3, [r0], #4
 	str	r3, [r0], #4
 	str	r3, [r0], #4
@@ -204,8 +204,8 @@ __create_page_tables:
 #endif
 #endif
 
-	ldr	r7, [r10, #PROCINFO_MM_MMUFLAGS] @ mm_mmuflags
-
+	ldr	r7, [r10, #PROCINFO_MM_MMUFLAGS] @ mm_mmuflags  /* [lksq:20150627] r10 은 proc_info 포인터, PROCINFO_MM_MMUFLAGS = 8 로 컴파일시 generating */
+    /* [lksq:20150627] arch/arm/mm/proc_v7.s __v7_proc 매크로 542line -> 매크로 정의 471 line , proc_info_list 는 arch/arm/include/asm/procinfo.h , stackcanary.com/?p=632 참조  */
 	/*
 	 * Create identity mapping to cater for __enable_mmu.
 	 * This identity mapping will be removed by paging_init().
@@ -215,21 +215,21 @@ __create_page_tables:
 	sub	r0, r0, r3			@ virt->phys offset
 	add	r5, r5, r0			@ phys __turn_mmu_on
 	add	r6, r6, r0			@ phys __turn_mmu_on_end
-	mov	r5, r5, lsr #SECTION_SHIFT
+	mov	r5, r5, lsr #SECTION_SHIFT /* [lksq:20150627] SECTION_SHIFT=20 */
 	mov	r6, r6, lsr #SECTION_SHIFT
 
-1:	orr	r3, r7, r5, lsl #SECTION_SHIFT	@ flags + kernel base
-	str	r3, [r4, r5, lsl #PMD_ORDER]	@ identity mapping
+1:	orr	r3, r7, r5, lsl #SECTION_SHIFT	@ flags + kernel base /* [lksq:20150627] r7 = flag */
+	str	r3, [r4, r5, lsl #PMD_ORDER]	@ identity mapping /* [lksq:20150627] PMD_ORDER = 2, 아래에서 1씩 2order shift 하여 증가하므로 pagetable entry 1개 증가  */
 	cmp	r5, r6
-	addlo	r5, r5, #1			@ next section
-	blo	1b
+	addlo	r5, r5, #1			@ next section /* [lksq:20150627] page table entry 를 1개씩 증가시키기 위함 */
+	blo	1b                                     /* [lksq:20150627] 실제로는 루프를 안돌것으로 예상  __turn_mmu_on_loc 가 짧다 */
 
 	/*
-	 * Map our RAM from the start to the end of the kernel .bss section.
+	 * Map our RAM from the start to the end of the kernel .bss section.  /* [lksq:20150627] text section start ~  bss section end 에 대한 PTE 설정 */
 	 */
-	add	r0, r4, #PAGE_OFFSET >> (SECTION_SHIFT - PMD_ORDER)
+	add	r0, r4, #PAGE_OFFSET >> (SECTION_SHIFT - PMD_ORDER) /* [lksq:20150627] 0x80000000 >> 18 = 0x2000  0x80000000(page_offset) 에 대한 pagetable Entry 물리 주소 */
 	ldr	r6, =(_end - 1)
-	orr	r3, r8, r7
+	orr	r3, r8, r7       /* [lksq:20150627] r8 = phsy_offset = 0 */
 	add	r6, r4, r6, lsr #(SECTION_SHIFT - PMD_ORDER)
 1:	str	r3, [r0], #1 << PMD_ORDER
 	add	r3, r3, #1 << SECTION_SHIFT
@@ -259,7 +259,7 @@ __create_page_tables:
 	 * Then map boot params address in r2 if specified.
 	 * We map 2 sections in case the ATAGs/DTB crosses a section boundary.
 	 */
-	mov	r0, r2, lsr #SECTION_SHIFT
+	mov	r0, r2, lsr #SECTION_SHIFT  /* [lksq:20150627] atag or dtb pointer */
 	movs	r0, r0, lsl #SECTION_SHIFT
 	subne	r3, r0, r8
 	addne	r3, r3, #PAGE_OFFSET
@@ -433,7 +433,7 @@ __enable_mmu:
 #ifdef CONFIG_CPU_ICACHE_DISABLE
 	bic	r0, r0, #CR_I
 #endif
-#ifndef CONFIG_ARM_LPAE
+#ifndef CONFIG_ARM_LPAE       /* [lksq:20150627] 이곳부터 시작 pte에 대한 domain(권한) setting  */
 	mov	r5, #(domain_val(DOMAIN_USER, DOMAIN_MANAGER) | \
 		      domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) | \
 		      domain_val(DOMAIN_TABLE, DOMAIN_MANAGER) | \
@@ -467,7 +467,7 @@ ENTRY(__turn_mmu_on)
 	mrc	p15, 0, r3, c0, c0, 0		@ read id reg
 	instr_sync
 	mov	r3, r3
-	mov	r3, r13
+	mov	r3, r13   /* [lksq:20150627] r13 = __mmap_switched */
 	ret	r3
 __turn_mmu_on_end:
 ENDPROC(__turn_mmu_on)
