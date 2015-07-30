@@ -2645,7 +2645,8 @@ static inline unsigned long *end_of_stack(struct task_struct *p)
 #ifdef CONFIG_STACK_GROWSUP
 	return (unsigned long *)((unsigned long)task_thread_info(p) + THREAD_SIZE) - 1;
 #else
-	return (unsigned long *)(task_thread_info(p) + 1);
+	return (unsigned long *)(task_thread_info(p) + 1); /* [lksq:20150704] init_task의 stack을 thread_info 구조체를 이용가져옴 */
+	/* [lksq:20150704] 아래에 있는 task_stack_end_corrupted 함수를 통해 나중에 이용될 것으로 예상 */
 #endif
 }
 

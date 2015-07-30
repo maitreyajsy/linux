@@ -24,3 +24,4 @@ EXPORT_SYMBOL(init_task);
  */
 union thread_union init_thread_union __init_task_data =
 	{ INIT_THREAD_INFO(init_task) };
+/* [lksq:20150704] init_task.h 에 정의 section을 가리킴 */

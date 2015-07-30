@@ -506,15 +506,17 @@ asmlinkage __visible void __init start_kernel(void)
 	 * Need to run as early as possible, to initialize the
 	 * lockdep hash:
 	 */
-	lockdep_init();
-	set_task_stack_end_magic(&init_task);
-	smp_setup_processor_id();
-	debug_objects_early_init();
+	lockdep_init(); /* [lksq:20150704] CONFIG_LOCKDEP not defined so skip, do{} while(0), if defined CONFIG_LOCKDEP, documentation 폴더 아래 lockdep관련 text 가 있으니 참조  */
+	set_task_stack_end_magic(&init_task); /* [lksq:20150704] 매직넘버를 스택 끝에 넣기 위함 overflow detection */
+	/* [lksq:20150704] init_task = INIT_TASK(init_task)  */
+	smp_setup_processor_id(); /* [lksq:20150704] __weak 매크로로 정의됨 다른 곳에서 정의된 경우 그것을 사용  */
+	/* [lksq:20150704] smp 는 동일 운영체제 메모리 공유 다중 코어 mpp 는 대형 컴퓨터 시스템 검색하여 참조 해볼것 */
+	debug_objects_early_init(); /* [lksq:20150711] spin_lock init & for debug feature , debug용 object pool list 연결 생성, rasp에서는 config상 정의가 안되어있으므로 빈함수  */
 
 	/*
 	 * Set up the the initial canary ASAP:
 	 */
-	boot_init_stack_canary();
+	boot_init_stack_canary(); /* [lksq:20150711] random byte 생성하여 stack guard 와 init task structure 의 stack canary 값을 초기화, rasp에서는 CONFIG_CC_STACKPROTECTOR 미정의로 빈함수  */
 
 	cgroup_init_early();
 

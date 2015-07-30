@@ -25,6 +25,15 @@ static inline void set_my_cpu_offset(unsigned long off)
 {
 	/* Set TPIDRPRW */
 	asm volatile("mcr p15, 0, %0, c13, c0, 4" : : "r" (off) : "memory");
+	/* [lksq:20150704] thread and process id register TPIDR
+	     4 값이 설정될 경우 write privileged only thread and process ID register
+		 arm instrument 공식 사이트 참조
+
+         권한 설정하는 내용으로 off = 0 이면 이것이 왜 clear랑 관계있는 것일까 ??
+		 set_my_cpu_offset(0)는 clear __my_cpu_offset on boot cpu
+		 __my_cpu_offset 은 반대로 read MRC 로 되어있음
+	 */
+
 }
 
 static inline unsigned long __my_cpu_offset(void)

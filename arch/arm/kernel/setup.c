@@ -461,6 +461,11 @@ void notrace cpu_init(void)
 	/*
 	 * setup stacks for re-entrant exception handlers
 	 */
+
+	/* [lksq:20150725] 아래 코드는 각 모드별 sp에 본 파일의 static 전역변수 stacks의 주소로부터의
+	   offset만큼 각 모드별 stack변수 위치를 더해서 이주소를 각 모드 sp 에 mov 시키는 코드이다
+    */
+
 	__asm__ (
 	"msr	cpsr_c, %1\n\t"
 	"add	r14, %0, %2\n\t"
@@ -496,17 +501,29 @@ void __init smp_setup_processor_id(void)
 {
 	int i;
 	u32 mpidr = is_smp() ? read_cpuid_mpidr() & MPIDR_HWID_BITMASK : 0;
+	/* [lksq:20150704] 이 함수가 돌고 있는 cpu 번호 보통은 0번 */
 	u32 cpu = MPIDR_AFFINITY_LEVEL(mpidr, 0);
+    /* [lksq:20150704] MPIDR_AFFINITY_LEVEL 은 big_little cpu 그룹핑 과 관련 ?
+	   big little 환경에서 각 level 에 따라 processing cpu 구분
+	   level = 1 이면 big little cluster ID MPIDR register 32bit 확인시 11~8bit 는 clusterID 임
+	   level = 0 이면 multi core 환경에서 cpu 구분자
+	   level = 2 , MPP 환경에서 topology 구분 값 ????  */
 
+	/* [lksq:20150704] boot cpu를 setting 하는 코드 */
 	cpu_logical_map(0) = cpu;
 	for (i = 1; i < nr_cpu_ids; ++i)
 		cpu_logical_map(i) = i == cpu ? 0 : i;
+    /* [lksq:20150704] cpu_logical_map 함수 일단 위에서 0번 배열에 cpu변수 값이 들어가므로 rasp 는 4값이 NR_CPUS 이고
+	   그러므로 0 1 2 3 ,   2 1 0 3 , 3 1 2 0  이런식으로 중복된 값이 들어가지는 않음
+	   cpu_logical_map(0)값은 boot cpu 를 가리키는 값이 됨  */
 
 	/*
 	 * clear __my_cpu_offset on boot CPU to avoid hang caused by
 	 * using percpu variable early, for example, lockdep will
 	 * access percpu variable inside lock_release
 	 */
+
+	/* [lksq:20150704] 현재 수행하고 있는 cpu의 per-cpu 값을 얻기위한 주소에 더해주는 offset값을 0으로 만들어주는 것 */
 	set_my_cpu_offset(0);
 
 	pr_info("Booting Linux on physical CPU 0x%x\n", mpidr);

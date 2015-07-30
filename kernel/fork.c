@@ -298,8 +298,9 @@ void set_task_stack_end_magic(struct task_struct *tsk)
 {
 	unsigned long *stackend;
 
-	stackend = end_of_stack(tsk);
+	stackend = end_of_stack(tsk); /* [lksq:20150704] include/linux/sched.h */
 	*stackend = STACK_END_MAGIC;	/* for overflow detection */
+	/* [lksq:20150704] 0x57AC6E90 */
 }
 
 static struct task_struct *dup_task_struct(struct task_struct *orig)

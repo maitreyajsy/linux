@@ -19,8 +19,12 @@ static inline bool is_smp(void)
 #ifndef CONFIG_SMP
 	return false;
 #elif defined(CONFIG_SMP_ON_UP)
+	/* [lksq:20150704] config SMP_ON_UP 가 켜지는 이유
+       SMP kernels contain instructions which fail on non-SMP processors.
+	  Enabling this option allows the kernel to modify itself to make
+	  these instructions safe. arch/arm/kconfig 파일에서 캡쳐 */
 	extern unsigned int smp_on_up;
-	return !!smp_on_up;
+	return !!smp_on_up; /* [lksq:20150704] boolean 으로 바꿔주기위한 연산 !! */
 #else
 	return true;
 #endif
