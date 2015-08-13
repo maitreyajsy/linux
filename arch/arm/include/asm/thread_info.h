@@ -93,11 +93,15 @@ struct thread_info {
  * how to get the thread information struct from C
  */
 static inline struct thread_info *current_thread_info(void) __attribute_const__;
-
+ /* [lksq:20150812-private] kernel stack(8kb)의 thread_info의 첫주소를 리턴
+  */
 static inline struct thread_info *current_thread_info(void)
 {
 	register unsigned long sp asm ("sp");
 	return (struct thread_info *)(sp & ~(THREAD_SIZE - 1));
+     /* [lksq:20150812-private] ~(THREAD_SIZE - 1) = ~(0x2000 - 1) = ~(0x1fff) = 0xffffe000
+      * sp & 0xffffe000 을 하면 THREAD_SIZE 로 정렬된 주소이므로 정확히 init_thread_union의 주소가 나오게됨
+      */
 }
 
 #define thread_saved_pc(tsk)	\

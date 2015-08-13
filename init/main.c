@@ -462,9 +462,9 @@ void __init parse_early_param(void)
 
 static void __init boot_cpu_init(void)
 {
-	int cpu = smp_processor_id();
+	int cpu = smp_processor_id(); /* [lksq:20150812-private] 현재 프로세서의 번호를 얻어온다 */
 	/* Mark the boot cpu "present", "online" etc for SMP and UP case */
-	set_cpu_online(cpu, true);
+	set_cpu_online(cpu, true);  /* [lksq:20150812-private] cpu_online, cpu_active, cpu_present, cpu_possible 비트맵에 해당 비트를 1로 세팅 */
 	set_cpu_active(cpu, true);
 	set_cpu_present(cpu, true);
 	set_cpu_possible(cpu, true);
@@ -531,8 +531,8 @@ asmlinkage __visible void __init start_kernel(void)
  * Interrupts are still disabled. Do necessary setups, then
  * enable them
  */
-	boot_cpu_init();
-	page_address_init();
+	boot_cpu_init(); /* [lksq:20150812-private] 현재 booting cpu를 얻어와 cpu_xxx_bits[]의 cpu를 set */
+	page_address_init();  /* [lksq:20150812-private] page 주소 hashtable 의 초기화 */
 	pr_notice("%s", linux_banner);
 	setup_arch(&command_line);
 	mm_init_cpumask(&init_mm);

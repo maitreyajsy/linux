@@ -172,6 +172,9 @@ static inline void wake_up_all_idle_cpus(void) {  }
   extern unsigned int debug_smp_processor_id(void);
 # define smp_processor_id() debug_smp_processor_id()
 #else
+ /* [lksq:20150812-private] CONFIG_DEBUG_PREEMPT 정의되어있지 않으므로 아래구문을 탄다
+  * raw_smp_processor_id()는  arch/arm/include/asm/smp.h 에 정의
+  */
 # define smp_processor_id() raw_smp_processor_id()
 #endif
 

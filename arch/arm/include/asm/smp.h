@@ -17,7 +17,9 @@
 #ifndef CONFIG_SMP
 # error "<asm/smp.h> included in non-SMP build"
 #endif
-
+ /* [lksq:20150812-private] current_thread_info() 는 arm/include/asm/thread_info.h에서 정의
+  * 현재 thread의 thread_info 구조체 위치를 리턴하는 함수 
+  */
 #define raw_smp_processor_id() (current_thread_info()->cpu)
 
 struct seq_file;
