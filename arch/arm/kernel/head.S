@@ -116,7 +116,7 @@ ENTRY(stext)
 
 	/*
 	 * r1 = machine no, r2 = atags or dtb,
-	 * r8 = phys_offset, r9 = cpuid, r10 = procinfo /* [lksq:20150627] 라즈베리파이에서는 r8 = 0 */
+	 * r8 = phys_offset, r9 = cpuid, r10 = procinfo [lksq:20150627] 라즈베리파이에서는 r8 = 0
 	 */
 	bl	__vet_atags /* [lksq:20150627] head-common.s 에 있음  */
 #ifdef CONFIG_SMP_ON_UP
@@ -138,7 +138,7 @@ ENTRY(stext)
 						@ mmu has been enabled
 	adr	lr, BSYM(1f)			@ return (PIC) address
 	mov	r8, r4				@ set TTBR1 to swapper_pg_dir
- ARM(	add	pc, r10, #PROCINFO_INITFUNC	)    /* [lksq:20150627]  __v7_ca7mp_setup 호출  -> __v7_setup 호출 cpu setup 이므로 자세한 내용은 패스
+ ARM(	add	pc, r10, #PROCINFO_INITFUNC	)    @ [lksq:20150627]  __v7_ca7mp_setup 호출  -> __v7_setup 호출 cpu setup 이므로 자세한 내용은 패스
  THUMB(	add	r12, r10, #PROCINFO_INITFUNC	)
  THUMB(	ret	r12				)
 1:	b	__enable_mmu
@@ -225,7 +225,7 @@ __create_page_tables:
 	blo	1b                                     /* [lksq:20150627] 실제로는 루프를 안돌것으로 예상  __turn_mmu_on_loc 가 짧다 */
 
 	/*
-	 * Map our RAM from the start to the end of the kernel .bss section.  /* [lksq:20150627] text section start ~  bss section end 에 대한 PTE 설정 */
+	 * Map our RAM from the start to the end of the kernel .bss section.  [lksq:20150627] text section start ~  bss section end 에 대한 PTE 설정
 	 */
 	add	r0, r4, #PAGE_OFFSET >> (SECTION_SHIFT - PMD_ORDER) /* [lksq:20150627] 0x80000000 >> 18 = 0x2000  0x80000000(page_offset) 에 대한 pagetable Entry 물리 주소 */
 	ldr	r6, =(_end - 1)
