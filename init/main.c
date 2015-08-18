@@ -442,6 +442,7 @@ void __init parse_early_options(char *cmdline)
 }
 
 /* Arch code calls this early on, or if not, just before other parsing. */
+ /* [lksq:20150818-private] this is called twice  1.in setup_arch() 2.in start_kernel() */
 void __init parse_early_param(void)
 {
 	static int done __initdata;

@@ -30,7 +30,7 @@
 #include <asm/mach/arch.h>
 
 #include "atags.h"
-
+/* [lksq:20150818-private] from include/generated/autoconf.h */
 static char default_command_line[COMMAND_LINE_SIZE] __initdata = CONFIG_CMDLINE;
 
 #ifndef MEM_SIZE
