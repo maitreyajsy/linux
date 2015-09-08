@@ -57,6 +57,7 @@
 
 int fdt_check_header(const void *fdt)
 {
+    /* [flinux-20150907] FDT_MAGIC = d00dfeed */
 	if (fdt_magic(fdt) == FDT_MAGIC) {
 		/* Complete tree */
 		if (fdt_version(fdt) < FDT_FIRST_SUPPORTED_VERSION)

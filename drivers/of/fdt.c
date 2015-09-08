@@ -1028,6 +1028,7 @@ bool __init early_init_dt_verify(void *params)
 void __init early_init_dt_scan_nodes(void)
 {
 	/* Retrieve various information from the /chosen node */
+    /* [flinux-20150907]  dtb 파일에서 chosen 노드에 있는 bootargs 값을 가져와서 boot_command_line 에 복사한다  */
 	of_scan_flat_dt(early_init_dt_scan_chosen, boot_command_line);
 
 	/* Initialize {size,address}-cells info */

@@ -218,6 +218,7 @@ const struct machine_desc * __init setup_machine_fdt(unsigned int dt_phys)
 
 	mdesc = of_flat_dt_match_machine(mdesc_best, arch_get_next_mach);
     /* [lksq:20150725] 참조 arch/arm/mach-bcm2709.c */
+    /* [flinux-20150907]  mdesc = MACHINE_START(BCM2709, "BCM2709"), machine_desc 구조체 이름 -> __mach_desc_BCM2709 */
 	if (!mdesc) {
 		const char *prop;
 		int size;

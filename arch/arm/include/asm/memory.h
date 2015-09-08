@@ -259,6 +259,7 @@ static inline phys_addr_t __virt_to_phys(unsigned long x)
 
 static inline unsigned long __phys_to_virt(phys_addr_t x)
 {
+    /* [flinux-20150907] 2:2 유저 커널 스페이스이므로 8000만번지가 PAGE_OFFSET */
 	return x - PHYS_OFFSET + PAGE_OFFSET;
 }
 
