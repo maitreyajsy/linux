@@ -328,7 +328,7 @@ struct zone {
 	/* Read-mostly fields */
 
 	/* zone watermarks, access with *_wmark_pages(zone) macros */
-	unsigned long watermark[NR_WMARK];
+	unsigned long watermark[NR_WMARK]; /* [lksq:20150917-private] previous version linux, pages_min, pages_low, pages_high */
 
 	/*
 	 * We don't know if the memory that we're going to allocate will be freeable

@@ -928,7 +928,7 @@ void __init setup_arch(char **cmdline_p)
 
 	/* populate cmd_line too for later use, preserving boot_command_line */
 	strlcpy(cmd_line, boot_command_line, COMMAND_LINE_SIZE);
-    /* [lksq:20150818-private] boot_command_line is set on setup_machine_tags */
+    /* [lksq:20150818-private] boot_command_line is set on setup_machine_tags or setup_machine_fdt */
     *cmdline_p = cmd_line;
 
 	parse_early_param();
