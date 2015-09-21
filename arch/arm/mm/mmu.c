@@ -1077,7 +1077,7 @@ void __init sanity_check_meminfo(void)
 	phys_addr_t memblock_limit = 0;
 	int highmem = 0;
 	phys_addr_t vmalloc_limit = __pa(vmalloc_min - 1) + 1;
-	struct memblock_region *reg;
+	struct memblock_region *reg; /* [tsclinux-20150921] region = memory bank */
 
 	for_each_memblock(memory, reg) {
 		phys_addr_t block_start = reg->base;
@@ -1092,14 +1092,14 @@ void __init sanity_check_meminfo(void)
 
 		if (!IS_ENABLED(CONFIG_HIGHMEM) || cache_is_vipt_aliasing()) {
 
-			if (highmem) {
+			if (highmem) {  /* [tsclinux-20150921] higmem 설정이 되지 않은 상태에서 higmem = 1 인경우 즉 위에서 reg->base >= vmalloc_limit 경우 memblock remove */
 				pr_notice("Ignoring RAM at %pa-%pa (!CONFIG_HIGHMEM)\n",
 					&block_start, &block_end);
 				memblock_remove(reg->base, reg->size);
 				continue;
 			}
 
-			if (reg->size > size_limit) {
+			if (reg->size > size_limit) {  /* [tsclinux-20150921]  directMapping을 넘어서는 size를 truncate */
 				phys_addr_t overlap_size = reg->size - size_limit;
 
 				pr_notice("Truncating RAM at %pa-%pa to -%pa",

@@ -917,10 +917,21 @@ void __init setup_arch(char **cmdline_p)
 		mdesc = setup_machine_tags(__atags_pointer, __machine_arch_type);
 	machine_desc = mdesc;
 	machine_name = mdesc->name;
+    /* [tsclinux-20150921]
+    HARD는 hardware적으로 reset 시그널이 있고, 소프트리셋 시그널이 따로 있습니다.
+    결국 HARD reset은 칩 전체 reset, SOFT는 칩중 일부분만 reset입니다.
+    SOFT의 경우 이렇게 하는 이유는, 일부 IP의 경우 reset을 안하는 경우가 있어서 그렇습니다.
 
+    - REBOOT_COLD: 일반적으로 power on/off
+    - REBOOT_HARD: chip에 연결된 HW reset (PC에서 reset 버튼)
+    - REBOOT_WARM: chip에 연결된 HW reset (PLL, test logic 등의 일부 HW를 reset에서 제외, 주로 watchdog과 연결)
+    - REBOOT_SOFT: software에 의한 reset (ctrl+alt+reset 키)
+    - REBOOT_GPIO: GPIO signal에 의한 reset
+   */
 	if (mdesc->reboot_mode != REBOOT_HARD)
 		reboot_mode = mdesc->reboot_mode;
 
+    /* [tsclinux-20150921] include/asm-generic/sections.h에 extern으로 선언 */
 	init_mm.start_code = (unsigned long) _text;
 	init_mm.end_code   = (unsigned long) _etext;
 	init_mm.end_data   = (unsigned long) _edata;
@@ -930,9 +941,10 @@ void __init setup_arch(char **cmdline_p)
 	strlcpy(cmd_line, boot_command_line, COMMAND_LINE_SIZE);
     /* [lksq:20150818-private] boot_command_line is set on setup_machine_tags or setup_machine_fdt */
     *cmdline_p = cmd_line;
-
+    /*  [tsclinux-20150921] console & earlycon string 비교후 이에 matching 되어있는 func call */
 	parse_early_param();
 
+    /* [tsclinux-20150921] early_paging_init 과 setup_dma_zone pass */
 	early_paging_init(mdesc, lookup_processor_type(read_cpuid_id()));
 	setup_dma_zone(mdesc);
 	sanity_check_meminfo();
