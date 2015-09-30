@@ -1041,6 +1041,13 @@ void __init debug_ll_io_init(void)
 
 static void * __initdata vmalloc_min =
 	(void *)(VMALLOC_END - (240 << 20) - VMALLOC_OFFSET);
+/* [tsclinux-20150930]
+ *  (void *)(0xff000000UL - (240 << 20) - (8*1024*1024));
+ *               4080MB       -  240MB      - 8MB
+ *             = 3832MB
+ *      (void *)0xEF80_0000
+ *  8MB는 high memory와 normal memory 사이의 완충지대
+ */
 
 /*
  * vmalloc=size forces the vmalloc area to be exactly 'size'

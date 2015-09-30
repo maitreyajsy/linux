@@ -947,7 +947,7 @@ void __init setup_arch(char **cmdline_p)
     /* [tsclinux-20150921] early_paging_init 과 setup_dma_zone pass */
 	early_paging_init(mdesc, lookup_processor_type(read_cpuid_id()));
 	setup_dma_zone(mdesc);
-	sanity_check_meminfo();
+	sanity_check_meminfo(); /* [tsclinux-20150930 memblock 구조체의 current_limit ,  high_memory 변수의 설정 */
 	arm_memblock_init(mdesc);
 
 	paging_init(mdesc);
