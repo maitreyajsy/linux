@@ -310,11 +310,11 @@ void __init arm_memblock_init(const struct machine_desc *mdesc)
 	}
 #endif
 
-	arm_mm_memblock_reserve();
+	arm_mm_memblock_reserve(); /* [tsclinux-20151006-private] reserve page table */
 
 	/* reserve any platform specific memblock areas */
 	if (mdesc->reserve)
-		mdesc->reserve();
+		mdesc->reserve(); /* [tsclinux-20151006-prv] reserve memory based on machine description */
 
 	early_init_fdt_scan_reserved_mem();
 
